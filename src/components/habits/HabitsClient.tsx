@@ -68,6 +68,13 @@ export function HabitsClient({
     if (!newHabit.trim()) return;
     const newId = `habit-${Date.now()}`;
     setHabits([...habits, { id: newId, name: newHabit, streak: 0, history: {} }]);
+    
+    // Server Action to persist it immediately
+    const todayStr = new Date().toISOString().split('T')[0];
+    startTransition(() => {
+      toggleHabit(todayStr, newId, newHabit, false);
+    });
+
     setNewHabit("");
   };
 

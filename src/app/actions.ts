@@ -37,13 +37,22 @@ export async function getDailyTasks(dateKey: string) {
   });
 }
 
-export async function addDailyTask(dateKey: string, title: string, category: string = "General") {
+export async function addDailyTask(dateKey: string, title: string, category: string = "General", duration?: number) {
   const userId = await getSessionUserId();
   const task = await db.dailyTask.create({
-    data: { userId, date: dateKey, title, category, completed: false }
+    data: { userId, date: dateKey, title, category, completed: false, duration }
   });
   revalidatePath("/daily-tasks");
   return task;
+}
+
+export async function updateTaskTime(taskId: string, timeSpent: number) {
+  const userId = await getSessionUserId();
+  await db.dailyTask.updateMany({
+    where: { id: taskId, userId },
+    data: { timeSpent }
+  });
+  revalidatePath("/daily-tasks");
 }
 
 export async function toggleDailyTask(taskId: string, completed: boolean) {

@@ -99,6 +99,8 @@ model DailyTask {
   title       String
   completed   Boolean  @default(false)
   category    String   @default("General")
+  duration    Int?     // Duration in minutes
+  timeSpent   Int?     @default(0) // Time spent in seconds
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
