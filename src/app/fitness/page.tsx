@@ -30,11 +30,11 @@ export default function FitnessPage() {
       setExercises(loadedExercises);
 
       let src = "";
-      if (schedule.name.includes("Push")) src = "/images/workouts/workout_push_day_1781645037838.png";
+      if (schedule.name.includes("Upper")) src = "/images/workouts/workout_upper_day_1781645066563.png";
+      else if (schedule.name.includes("Lower")) src = "/images/workouts/workout_lower_day_1781645076445.png";
+      else if (schedule.name.includes("Push")) src = "/images/workouts/workout_push_day_1781645037838.png";
       else if (schedule.name.includes("Pull")) src = "/images/workouts/workout_pull_day_1781645047645.png";
       else if (schedule.name.includes("Legs")) src = "/images/workouts/workout_leg_day_1781645057302.png";
-      else if (schedule.name.includes("Upper")) src = "/images/workouts/workout_upper_day_1781645066563.png";
-      else if (schedule.name.includes("Lower")) src = "/images/workouts/workout_lower_day_1781645076445.png";
       
       setBannerSrc(src);
     }
