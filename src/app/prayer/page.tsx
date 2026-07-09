@@ -14,9 +14,10 @@ const getWeekDays = () => {
 export default async function PrayerPage({
   searchParams,
 }: {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }) {
-  const dateKey = searchParams.date || new Date().toISOString().split("T")[0];
+  const { date } = await searchParams;
+  const dateKey = date || new Date().toISOString().split("T")[0];
   const initialLog = await getPrayerLog(dateKey);
   const weekDays = getWeekDays();
 

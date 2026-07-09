@@ -4,9 +4,10 @@ import { DailyTasksClient } from "@/components/daily-tasks/DailyTasksClient";
 export default async function DailyTasksPage({
   searchParams,
 }: {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }) {
-  const dateKey = searchParams.date || new Date().toISOString().split("T")[0];
+  const { date } = await searchParams;
+  const dateKey = date || new Date().toISOString().split("T")[0];
   const initialTasks = await getDailyTasks(dateKey);
 
   return <DailyTasksClient initialTasks={initialTasks} dateKey={dateKey} />;

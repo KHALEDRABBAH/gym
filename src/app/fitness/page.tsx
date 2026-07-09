@@ -9,9 +9,10 @@ import { getWorkoutLog } from "@/app/actions";
 export default async function FitnessPage({
   searchParams,
 }: {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }) {
-  const dateKey = searchParams.date || new Date().toISOString().split("T")[0];
+  const { date } = await searchParams;
+  const dateKey = date || new Date().toISOString().split("T")[0];
   const selectedDate = new Date(dateKey);
   
   const dayIndex = selectedDate.getDay();

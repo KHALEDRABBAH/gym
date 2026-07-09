@@ -4,9 +4,10 @@ import { LifestyleClient } from "@/components/lifestyle/LifestyleClient";
 export default async function LifestylePage({
   searchParams,
 }: {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }) {
-  const dateKey = searchParams.date || new Date().toISOString().split("T")[0];
+  const { date } = await searchParams;
+  const dateKey = date || new Date().toISOString().split("T")[0];
   
   const initialSleep = await getSleepLog(dateKey);
   const initialReview = await getReviewLog(dateKey, "DAILY");

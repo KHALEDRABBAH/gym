@@ -15,9 +15,10 @@ const getPast7Days = (endDateString: string) => {
 export default async function HabitsPage({
   searchParams,
 }: {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }) {
-  const dateKey = searchParams.date || new Date().toISOString().split("T")[0];
+  const { date } = await searchParams;
+  const dateKey = date || new Date().toISOString().split("T")[0];
   const past7Days = getPast7Days(dateKey);
   
   const startDateKey = past7Days[0].toISOString().split("T")[0];
