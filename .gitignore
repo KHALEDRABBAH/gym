@@ -22,6 +22,7 @@ npm-debug.log*
 
 .vercel
 
+old_version/
 /src/generated/prisma
 
 # Next.js & Local Database
@@ -29,3 +30,5 @@ npm-debug.log*
 .env.local
 .next/
 dev.db
+
+.vercel
