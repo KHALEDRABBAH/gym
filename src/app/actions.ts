@@ -182,12 +182,12 @@ export async function getSleepLog(dateKey: string) {
   return log;
 }
 
-export async function updateSleepLog(dateKey: string, hours: number, quality: number) {
+export async function updateSleepLog(dateKey: string, hours: number, quality: number, timing: string = "Night", quietness: string = "Quiet") {
   const userId = await getSessionUserId();
   await db.sleepLog.upsert({
     where: { userId_date: { userId, date: dateKey } },
-    update: { hours, quality },
-    create: { userId, date: dateKey, hours, quality }
+    update: { hours, quality, timing, quietness },
+    create: { userId, date: dateKey, hours, quality, timing, quietness }
   });
   revalidatePath("/lifestyle");
 }

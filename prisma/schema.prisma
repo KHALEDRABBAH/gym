@@ -139,6 +139,8 @@ model SleepLog {
   date        String
   hours       Float    @default(0)
   quality     Int      @default(3) // 1-5 scale
+  timing      String?  @default("Night") // "Night" or "Day"
+  quietness   String?  @default("Quiet") // "Quiet" or "Noisy"
   notes       String?
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

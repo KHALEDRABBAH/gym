@@ -1,13 +1,20 @@
 "use client";
 
-import { Coffee, Moon, Sun, CloudRain, Zap, Heart } from "lucide-react";
+import { Coffee, Moon, Sun, CloudRain, Zap, Heart, CheckCircle2, Loader2, VolumeX, Volume2, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useState, useEffect, useTransition } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
 import { updateSleepLog, updateReviewLog } from "@/app/actions";
-import type { SleepLog, ReviewLog } from "@prisma/client";
+
+// Use an inline type since Prisma types might take a moment to sync in IDE, though it works at build time
+type SleepLogData = {
+  hours: number;
+  quality: number;
+  timing: string | null;
+  quietness: string | null;
+};
 
 export function LifestyleClient({ 
   dateKey, 
@@ -15,12 +22,12 @@ export function LifestyleClient({
   initialReview 
 }: { 
   dateKey: string;
-  initialSleep: SleepLog | null;
-  initialReview: ReviewLog | null;
+  initialSleep: any; // Using any to avoid strict Prisma TS errors if not refreshed locally yet
+  initialReview: any;
 }) {
   const [isPending, startTransition] = useTransition();
 
-  // Parse initial journal and mood if stored as JSON in notes
+  // Parse initial journal and mood
   let initialMood = "good";
   let initialJournal = "";
   
@@ -34,24 +41,36 @@ export function LifestyleClient({
     }
   }
 
-  const [sleep, setSleep] = useState(initialSleep?.hours || 7.5);
+  // Sleep State
+  const [sleepStr, setSleepStr] = useState<string>(initialSleep?.hours?.toString() || "7.5");
+  const [timing, setTiming] = useState<string>(initialSleep?.timing || "Night");
+  const [quietness, setQuietness] = useState<string>(initialSleep?.quietness || "Quiet");
+  const [sleepSaveStatus, setSleepSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Mood State
   const [mood, setMood] = useState(initialMood);
   const [journalInput, setJournalInput] = useState(initialJournal);
   
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const [sleepSaveStatus, setSleepSaveStatus] = useState(false);
   const [moodSaveStatus, setMoodSaveStatus] = useState(false);
 
-  // Handlers
-  const handleSleepChange = (h: number) => {
-    setSleep(h);
-    setSleepSaveStatus(true);
-    startTransition(() => {
-      updateSleepLog(dateKey, h, initialSleep?.quality || 3);
-      setTimeout(() => setSleepSaveStatus(false), 2000);
-    });
-  };
+  // Auto-Save Sleep
+  useEffect(() => {
+    const hrs = parseFloat(sleepStr);
+    if (isNaN(hrs)) return;
 
+    setSleepSaveStatus("saving");
+    const timeoutId = setTimeout(() => {
+      startTransition(() => {
+        updateSleepLog(dateKey, hrs, initialSleep?.quality || 3, timing, quietness);
+        setSleepSaveStatus("saved");
+        setTimeout(() => setSleepSaveStatus("idle"), 2000);
+      });
+    }, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [sleepStr, timing, quietness, dateKey]);
+
+  // Save Mood manually
   const handleMoodChange = (newMood: string) => {
     setMood(newMood);
     setMoodSaveStatus(true);
@@ -74,11 +93,38 @@ export function LifestyleClient({
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       });
-    }, 1000); // 1 second debounce
+    }, 1000);
     
     return () => clearTimeout(timeoutId);
   }, [journalInput, mood, dateKey]);
   
+  // Insights logic
+  const getInsights = () => {
+    const hrs = parseFloat(sleepStr);
+    const insights: Array<{ type: string, color: string, icon: string, text: string }> = [];
+    if (isNaN(hrs)) return insights;
+
+    if (hrs < 6) {
+      insights.push({ type: 'danger', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', icon: '⚠️', text: 'أنت تنام أقل من 6 ساعات! قلة النوم تزيد من التوتر، وتقلل التركيز، وتضعف المناعة. حاول أن تنام بين 7 و 9 ساعات.' });
+    } else if (hrs >= 7 && hrs <= 9) {
+      insights.push({ type: 'success', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: '✅', text: 'نوم مثالي! الاستمرار على هذا المعدل يعزز بناء العضلات، ويحسن صحتك العقلية والجسدية.' });
+    } else if (hrs > 9) {
+      insights.push({ type: 'warning', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: '⚠️', text: 'لقد نمت أكثر من 9 ساعات. كثرة النوم قد تجعلك تشعر بالخمول طوال اليوم وتؤثر على حيويتك.' });
+    }
+
+    if (timing === "Day") {
+      insights.push({ type: 'warning', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: '💡', text: 'النوم نهاراً يعطل ساعتك البيولوجية ويقلل من إفراز هرمون الميلاتونين. حاول تعديل روتينك للنوم ليلاً لتحصل على نوم أعمق وأكثر راحة.' });
+    }
+
+    if (quietness === "Noisy") {
+      insights.push({ type: 'danger', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20', icon: '🎧', text: 'النوم في بيئة مزعجة يمنعك من الوصول إلى مرحلة النوم العميق (Deep Sleep). جرّب استخدام سدادات أذن أو تشغيل أصوات بيضاء (White Noise).' });
+    }
+
+    return insights;
+  };
+
+  const insights = getInsights();
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12 w-full text-white">
       <div className="flex items-center justify-between">
@@ -91,42 +137,99 @@ export function LifestyleClient({
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <Card className="bg-[#151923] border-gray-800">
+        
+        {/* Sleep Dashboard */}
+        <Card className="bg-[#151923] border-gray-800 md:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Moon className="w-5 h-5 text-indigo-400" /> Sleep Log
+                <Moon className="w-5 h-5 text-indigo-400" /> Sleep Dashboard
               </CardTitle>
-              {sleepSaveStatus && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+              <div className="flex items-center gap-2 text-sm">
+                {sleepSaveStatus === "saving" && <><Loader2 className="w-4 h-4 animate-spin text-gray-400" /><span className="text-gray-400">Saving...</span></>}
+                {sleepSaveStatus === "saved" && <><CheckCircle2 className="w-4 h-4 text-emerald-500" /><span className="text-emerald-500">Saved</span></>}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex justify-between items-center text-center">
-              <div>
-                <p className="text-gray-500 text-sm mb-2">Hours Slept</p>
-                <div className="text-4xl font-black text-indigo-400">{sleep}</div>
-              </div>
-              <div className="w-px h-16 bg-gray-800"></div>
-              <div>
-                <p className="text-gray-500 text-sm mb-2">Quality</p>
-                <div className="text-4xl font-black text-emerald-400">Good</div>
-              </div>
-            </div>
             
-            <div className="flex gap-2">
-              {[4, 5, 6, 7, 8, 9, 10].map(h => (
-                <button 
-                  key={h} 
-                  onClick={() => handleSleepChange(h)}
-                  className={`flex-1 py-2 border rounded-lg transition-colors ${sleep === h ? 'bg-indigo-500/20 border-indigo-500' : 'bg-gray-900 border-gray-800 hover:border-indigo-500 hover:bg-indigo-500/10'}`}
-                >
-                  {h}
-                </button>
-              ))}
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Hours Input */}
+              <div className="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                <p className="text-gray-400 text-sm font-medium">Hours Slept</p>
+                <Input 
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="24"
+                  value={sleepStr}
+                  onChange={(e) => setSleepStr(e.target.value)}
+                  className="bg-[#151923] border-gray-700 text-3xl font-black text-indigo-400 h-16 text-center"
+                />
+              </div>
+
+              {/* Timing Toggle */}
+              <div className="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                <p className="text-gray-400 text-sm font-medium">Timing</p>
+                <div className="flex gap-2 h-16">
+                  <button 
+                    onClick={() => setTiming("Night")}
+                    className={`flex-1 rounded-lg border transition-all flex items-center justify-center gap-2 ${timing === "Night" ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' : 'bg-[#151923] border-gray-700 text-gray-500 hover:border-gray-500'}`}
+                  >
+                    <Moon className="w-5 h-5" /> Night
+                  </button>
+                  <button 
+                    onClick={() => setTiming("Day")}
+                    className={`flex-1 rounded-lg border transition-all flex items-center justify-center gap-2 ${timing === "Day" ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-[#151923] border-gray-700 text-gray-500 hover:border-gray-500'}`}
+                  >
+                    <Sun className="w-5 h-5" /> Day
+                  </button>
+                </div>
+              </div>
+
+              {/* Environment Toggle */}
+              <div className="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                <p className="text-gray-400 text-sm font-medium">Environment</p>
+                <div className="flex gap-2 h-16">
+                  <button 
+                    onClick={() => setQuietness("Quiet")}
+                    className={`flex-1 rounded-lg border transition-all flex flex-col items-center justify-center ${quietness === "Quiet" ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-[#151923] border-gray-700 text-gray-500 hover:border-gray-500'}`}
+                  >
+                    <VolumeX className="w-5 h-5 mb-1" />
+                    <span className="text-[10px] uppercase font-bold">Quiet</span>
+                  </button>
+                  <button 
+                    onClick={() => setQuietness("Noisy")}
+                    className={`flex-1 rounded-lg border transition-all flex flex-col items-center justify-center ${quietness === "Noisy" ? 'bg-rose-500/20 border-rose-500 text-rose-400' : 'bg-[#151923] border-gray-700 text-gray-500 hover:border-gray-500'}`}
+                  >
+                    <Volume2 className="w-5 h-5 mb-1" />
+                    <span className="text-[10px] uppercase font-bold">Noisy</span>
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Insights Section */}
+            {insights.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h3 className="text-gray-400 text-sm font-medium flex items-center gap-2">
+                  <Info className="w-4 h-4" /> AI Sleep Insights
+                </h3>
+                <div className="grid gap-3">
+                  {insights.map((insight, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border flex items-start gap-3 ${insight.color}`}>
+                      <span className="text-xl leading-none">{insight.icon}</span>
+                      <p className="text-sm leading-relaxed">{insight.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </CardContent>
         </Card>
 
+        {/* Mood Tracker */}
         <Card className="bg-[#151923] border-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -173,7 +276,8 @@ export function LifestyleClient({
           </CardContent>
         </Card>
 
-        <Card className="bg-[#151923] border-gray-800 md:col-span-2">
+        {/* Journaling */}
+        <Card className="bg-[#151923] border-gray-800 md:col-span-1">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Daily Reflection</CardTitle>
@@ -185,27 +289,12 @@ export function LifestyleClient({
                 )}
                 {saveStatus === "saved" && (
                   <span className="text-emerald-400 text-sm flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> Saved automatically
+                    <CheckCircle2 className="w-4 h-4" /> Saved
                   </span>
                 )}
                 {saveStatus === "idle" && (
-                  <span className="text-gray-500 text-sm italic hidden md:inline-block">Auto-saves as you type</span>
+                  <span className="text-gray-500 text-sm italic hidden md:inline-block">Auto-saves</span>
                 )}
-                
-                <Button 
-                  onClick={() => {
-                    const notesJson = JSON.stringify({ mood, journal: journalInput });
-                    startTransition(() => {
-                      updateReviewLog(dateKey, "DAILY", null, null, notesJson);
-                      setSaveStatus("saved");
-                      setTimeout(() => setSaveStatus("idle"), 2000);
-                    });
-                  }}
-                  disabled={isPending}
-                  className="bg-indigo-600 hover:bg-indigo-700 h-8 text-xs font-bold"
-                >
-                  Save Journal
-                </Button>
               </div>
             </div>
           </CardHeader>
@@ -214,7 +303,7 @@ export function LifestyleClient({
               value={journalInput}
               onChange={(e) => setJournalInput(e.target.value)}
               placeholder="How are you feeling today? Any specific wins or struggles?"
-              className="bg-gray-900 border-gray-800 min-h-[120px] resize-none focus:border-indigo-500"
+              className="bg-gray-900 border-gray-800 min-h-[160px] resize-none focus:border-indigo-500"
             />
           </CardContent>
         </Card>
