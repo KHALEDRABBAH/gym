@@ -4,9 +4,11 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "@/lib/auth";
 
+import { redirect } from "next/navigation";
+
 export async function getSessionUserId() {
   const session = await getServerSession();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) redirect("/welcome");
   return session.user.id;
 }
 
