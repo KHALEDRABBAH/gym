@@ -1,4 +1,4 @@
-import { getNutritionData } from "../actions";
+import { getNutritionData } from "@/app/actions";
 import { NutritionClient } from "@/components/nutrition/NutritionClient";
 
 export default async function NutritionPage({

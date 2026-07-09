@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame } from "lucide-react";
-import { getDashboardData } from "./actions";
+import { getDashboardData } from "@/app/actions";
 import { HabitRow } from "@/components/dashboard/HabitRow";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
 import { InsightsEngine } from "@/components/dashboard/InsightsEngine";
