@@ -10,6 +10,22 @@ export async function getSessionUserId() {
   return session.user.id;
 }
 
+// --- GAMIFICATION HELPERS ---
+import { calculateLevelFromXp, XP_REWARDS } from "@/lib/gamification";
+
+export async function awardXP(userId: string, amount: number) {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) return;
+  
+  const newXp = Math.max(0, user.xp + amount);
+  const newLevel = calculateLevelFromXp(newXp);
+  
+  await db.user.update({
+    where: { id: userId },
+    data: { xp: newXp, level: newLevel }
+  });
+}
+
 // --- DAILY TASKS ACTIONS ---
 export async function getDailyTasks(dateKey: string) {
   const userId = await getSessionUserId();
@@ -68,10 +84,7 @@ export async function toggleHabit(dateKey: string, habitId: string, habitName: s
   });
 
   // Gamification: Give XP
-  await db.user.update({
-    where: { id: userId },
-    data: { xp: { increment: completed ? 10 : -10 } }
-  });
+  await awardXP(userId, completed ? XP_REWARDS.HABIT_COMPLETED : -XP_REWARDS.HABIT_COMPLETED);
 
   revalidatePath("/habits");
   revalidatePath("/");
@@ -94,11 +107,15 @@ export async function getPrayerLog(dateKey: string) {
 
 export async function togglePrayer(dateKey: string, prayer: string, completed: boolean) {
   const userId = await getSessionUserId();
-  await db.prayerLog.upsert({
+  const log = await db.prayerLog.upsert({
     where: { userId_date: { userId, date: dateKey } },
     update: { [prayer]: completed },
     create: { userId, date: dateKey, [prayer]: completed }
   });
+  
+  // Basic gamification: award XP per prayer
+  await awardXP(userId, completed ? (XP_REWARDS.PRAYERS_COMPLETED / 5) : -(XP_REWARDS.PRAYERS_COMPLETED / 5));
+
   revalidatePath("/prayer");
 }
 
@@ -125,11 +142,17 @@ export async function updateReviewLog(dateKey: string, type: "DAILY" | "WEEKLY",
   if (improvements !== null) updateData.improvements = improvements;
   if (notes !== null) updateData.notes = notes;
 
+  const isNew = !await db.reviewLog.findUnique({ where: { userId_date_type: { userId, date: dateKey, type } } });
+
   await db.reviewLog.upsert({
     where: { userId_date_type: { userId, date: dateKey, type } },
     update: updateData,
     create: { userId, date: dateKey, type, ...updateData }
   });
+  
+  if (isNew && (wins || improvements || notes)) {
+    await awardXP(userId, XP_REWARDS.JOURNAL_ENTRY);
+  }
   revalidatePath("/lifestyle");
 }
 
@@ -245,6 +268,8 @@ export async function saveWorkoutSet(dateKey: string, workoutType: string, exerc
     workout = await db.workoutLog.create({
       data: { userId, date: dateKey, workoutType }
     });
+    // Gamification: Give XP for starting a workout
+    await awardXP(userId, XP_REWARDS.WORKOUT_COMPLETED);
   }
 
   // Find existing set
@@ -277,11 +302,62 @@ export async function getUserProfile() {
   return db.user.findUnique({ where: { id: userId } });
 }
 
-// --- NUTRITION ACTIONS (MOCKS) ---
-export async function getNutritionData(dateKey?: string) {
-  return { 
-    nutritionLog: { waterLiters: 0, calories: 0, protein: 0, carbs: 0, fat: 0 },
-    targetMacros: { calories: 2500, protein: 180, carbs: 250, fat: 80 }
-  };
+// --- NUTRITION ACTIONS ---
+export async function getNutritionData(dateKey: string) {
+  const userId = await getSessionUserId();
+  
+  let log = await db.nutritionLog.findUnique({
+    where: { userId_date: { userId, date: dateKey } }
+  });
+
+  if (!log) {
+    log = await db.nutritionLog.create({
+      data: { userId, date: dateKey }
+    });
+  }
+
+  // TODO: Let user customize targets in their profile. Hardcoded for now.
+  const targetMacros = { calories: 2500, protein: 180, carbs: 250, fat: 80 };
+
+  return { nutritionLog: log, targetMacros };
 }
-export async function logWater(dateKey: string, liters: number) {}
+
+export async function updateNutritionLog(dateKey: string, data: { calories: number, protein: number, carbs: number, fat: number }) {
+  const userId = await getSessionUserId();
+  
+  await db.nutritionLog.upsert({
+    where: { userId_date: { userId, date: dateKey } },
+    update: data,
+    create: { userId, date: dateKey, ...data }
+  });
+
+  // Gamification: Give XP for logging a meal
+  await awardXP(userId, XP_REWARDS.MEAL_LOGGED);
+
+  revalidatePath("/nutrition");
+  revalidatePath("/");
+}
+
+export async function logWater(dateKey: string, liters: number) {
+  const userId = await getSessionUserId();
+  
+  const log = await db.nutritionLog.findUnique({
+    where: { userId_date: { userId, date: dateKey } }
+  });
+
+  const newWater = Math.max(0, (log?.waterLiters || 0) + liters);
+
+  await db.nutritionLog.upsert({
+    where: { userId_date: { userId, date: dateKey } },
+    update: { waterLiters: newWater },
+    create: { userId, date: dateKey, waterLiters: newWater }
+  });
+
+  // Award XP if hit goal (e.g. 3.5L)
+  if ((log?.waterLiters || 0) < 3.5 && newWater >= 3.5) {
+    await awardXP(userId, XP_REWARDS.WATER_GOAL_REACHED);
+  }
+
+  revalidatePath("/nutrition");
+  revalidatePath("/");
+}

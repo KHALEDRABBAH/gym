@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
 import { TopCalendar } from "@/components/layout/TopCalendar";
+import { RestTimer } from "@/components/fitness/RestTimer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -50,6 +51,7 @@ export default async function RootLayout({
             </main>
           </div>
           <Toaster theme="system" position="top-right" richColors />
+          <RestTimer />
         </ThemeProvider>
       </body>
     </html>

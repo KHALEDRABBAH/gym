@@ -5,6 +5,8 @@ import { Save, Trash2, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useTransition } from "react";
 import { saveWorkoutSet, clearWorkoutLog } from "@/app/actions";
+import { startRestTimer } from "@/components/fitness/RestTimer";
+import { Timer, ArrowDownToLine } from "lucide-react";
 import type { WorkoutLog, ExerciseSet } from "@prisma/client";
 
 interface WorkoutLogClientProps {
@@ -119,25 +121,48 @@ export function WorkoutLogClient({ exercises, initialLog, dateKey, scheduleType 
                     const setData = exLog.sets[s] || { kg: "", rep: "" };
                     
                     return (
-                      <td key={s} className="px-2 py-4">
-                        <div className={`flex items-center justify-center gap-1 ${isDisabled ? 'opacity-30 pointer-events-none' : ''}`}>
-                          <Input 
-                            type="number" 
-                            placeholder="kg" 
-                            value={setData.kg || ""}
-                            onChange={(e) => handleUpdate(ex.id, ex.name, s, 'kg', e.target.value)}
-                            className="w-16 h-8 bg-[#1f2537] border-gray-700 text-center text-gray-200 rounded-md focus:border-indigo-500 px-1 placeholder:text-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            disabled={isDisabled}
-                          />
-                          <span className="text-gray-500 text-xs font-bold">×</span>
-                          <Input 
-                            type="number" 
-                            placeholder="rep" 
-                            value={setData.rep || ""}
-                            onChange={(e) => handleUpdate(ex.id, ex.name, s, 'rep', e.target.value)}
-                            className="w-16 h-8 bg-[#1f2537] border-gray-700 text-center text-gray-200 rounded-md focus:border-indigo-500 px-1 placeholder:text-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            disabled={isDisabled}
-                          />
+                      <td key={s} className="px-2 py-4 align-top">
+                        <div className={`flex flex-col items-center gap-2 ${isDisabled ? 'opacity-30 pointer-events-none' : ''}`}>
+                          <div className="flex items-center justify-center gap-1">
+                            <Input 
+                              type="number" 
+                              placeholder="kg" 
+                              value={setData.kg || ""}
+                              onChange={(e) => handleUpdate(ex.id, ex.name, s, 'kg', e.target.value)}
+                              className="w-16 h-8 bg-[#1f2537] border-gray-700 text-center text-gray-200 rounded-md focus:border-indigo-500 px-1 placeholder:text-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              disabled={isDisabled}
+                            />
+                            <span className="text-gray-500 text-xs font-bold">×</span>
+                            <Input 
+                              type="number" 
+                              placeholder="rep" 
+                              value={setData.rep || ""}
+                              onChange={(e) => handleUpdate(ex.id, ex.name, s, 'rep', e.target.value)}
+                              className="w-16 h-8 bg-[#1f2537] border-gray-700 text-center text-gray-200 rounded-md focus:border-indigo-500 px-1 placeholder:text-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              disabled={isDisabled}
+                            />
+                          </div>
+                          
+                          {/* Timer & Advanced Toggles */}
+                          <div className="flex items-center gap-1 opacity-50 hover:opacity-100 transition-opacity">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              onClick={() => startRestTimer(90)} 
+                              className="h-6 w-6 rounded-md hover:bg-indigo-500/20 text-indigo-400"
+                              title="Start 90s Rest Timer"
+                            >
+                              <Timer className="w-3 h-3" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 rounded-md hover:bg-orange-500/20 text-orange-400"
+                              title="Mark as Drop Set"
+                            >
+                              <ArrowDownToLine className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       </td>
                     );

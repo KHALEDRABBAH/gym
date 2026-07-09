@@ -58,6 +58,8 @@ model ExerciseSet {
   setIndex     Int
   rpe          Int?       // Rate of Perceived Exertion
   notes        String?
+  isDropSet    Boolean    @default(false)
+  superSetId   String?    // To group sets together in a superset
   
   workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
 }

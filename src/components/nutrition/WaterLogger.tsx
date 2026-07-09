@@ -7,13 +7,12 @@ import { useTransition, useState } from "react";
 import { logWater } from "@/app/actions";
 import { Plus, Minus, Droplets } from "lucide-react";
 
-export function WaterLogger({ currentWater }: { currentWater: number }) {
+export function WaterLogger({ currentWater, dateKey = new Date().toISOString().split("T")[0] }: { currentWater: number, dateKey?: string }) {
   const [isPending, startTransition] = useTransition();
   const [customAmount, setCustomAmount] = useState<string>("0.25");
 
   const addWater = (liters: number) => {
     startTransition(() => {
-      const dateKey = new Date().toISOString().split("T")[0];
       logWater(dateKey, liters);
     });
   };
