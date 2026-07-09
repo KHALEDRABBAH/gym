@@ -19,3 +19,13 @@ build/
 # Logs
 *.log
 npm-debug.log*
+
+.vercel
+
+/src/generated/prisma
+
+# Next.js & Local Database
+.env
+.env.local
+.next/
+dev.db

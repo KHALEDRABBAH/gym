@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Fitness Profile
+  weight        Float?
+  bodyFat       Float?
+  targetWeight  Float?
+  targetBodyFat Float?
+  level         Int       @default(1)
+  xp            Int       @default(0)
+  streak        Int       @default(0)
+  
+  // Relations
+  workouts      WorkoutLog[]
+  nutrition     NutritionLog[]
+  habits        HabitLog[]
+}
+
+model WorkoutLog {
+  id          String    @id @default(uuid())
+  userId      String
+  date        DateTime  @default(now())
+  workoutType String    // e.g., "Push", "Pull", "Legs"
+  duration    Int?      // in minutes
+  calories    Int?      
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises   ExerciseSet[]
+}
+
+model ExerciseSet {
+  id           String     @id @default(uuid())
+  workoutLogId String
+  exerciseName String
+  weight       Float
+  reps         Int
+  rpe          Int?       // Rate of Perceived Exertion
+  
+  workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
+}
+
+model NutritionLog {
+  id          String   @id @default(uuid())
+  userId      String
+  date        DateTime @default(now())
+  calories    Int      @default(0)
+  protein     Float    @default(0)
+  carbs       Float    @default(0)
+  fat         Float    @default(0)
+  waterLiters Float    @default(0)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HabitLog {
+  id          String   @id @default(uuid())
+  userId      String
+  date        DateTime @default(now())
+  habitType   String   // e.g., "Prayer", "Study", "Sleep"
+  completed   Boolean  @default(false)
+  details     String?  // e.g., "Read 10 pages of Quran"
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
