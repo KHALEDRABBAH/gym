@@ -45,7 +45,6 @@ const sidebarSections = [
   {
     title: "PLANNING",
     items: [
-      { name: "Reviews", href: "/review", icon: CalendarCheck },
       { name: "Achievements", href: "/achievements", icon: Trophy },
       { name: "Settings", href: "/settings", icon: Settings },
     ]

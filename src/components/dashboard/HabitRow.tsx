@@ -15,7 +15,8 @@ export function HabitRow({ id, name, completed }: HabitRowProps) {
 
   const handleToggle = () => {
     startTransition(() => {
-      toggleHabit(id, !completed);
+      const dateKey = new Date().toISOString().split("T")[0];
+      toggleHabit(dateKey, id, name, !completed);
     });
   };
 

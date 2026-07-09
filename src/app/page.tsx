@@ -1,143 +1,95 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Droplets, Utensils, Moon, Flame } from "lucide-react";
-import { HeatmapCalendar } from "@/components/dashboard/HeatmapCalendar";
-import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
-import { HabitGrid } from "@/components/habits/HabitGrid";
-import { WeightChart } from "@/components/progress/WeightChart";
+import { Flame } from "lucide-react";
 import { getDashboardData } from "./actions";
 import { HabitRow } from "@/components/dashboard/HabitRow";
+import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
+import { InsightsEngine } from "@/components/dashboard/InsightsEngine";
 
 export default async function Dashboard() {
-  const { user, habits } = await getDashboardData();
+  const { user, todayHabits, sleepData, workoutData } = await getDashboardData();
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex justify-between items-end">
+    <div className="flex flex-col gap-8 w-full pb-12">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user.name}</h1>
-          <p className="text-gray-400 mt-1">Level {user.level} Titan • {user.xp} XP</p>
+          <h1 className="text-4xl font-black tracking-tight text-white mb-2">Welcome back, {user.name}</h1>
+          <p className="text-gray-400 font-medium">Level {user.level || 1} Titan • {user.xp || 0} XP</p>
         </div>
-        <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-sm py-1 px-3">
-          <Flame className="w-4 h-4 mr-1" />
-          {user.streak} Day Streak
+        <Badge variant="default" className="bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 text-sm py-1.5 px-4 font-bold shadow-[0_0_15px_rgba(249,115,22,0.15)]">
+          <Flame className="w-4 h-4 mr-1.5" />
+          {user.streak || 0} Day Streak
         </Badge>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard 
-          title="Calories" 
-          icon={<Utensils className="h-4 w-4 text-muted-foreground" />} 
-          value="1,850" 
-          subtitle="of 2,400 kcal"
-          progress={77}
-          color="bg-blue-500"
-        />
-        <MetricCard 
-          title="Protein" 
-          icon={<Utensils className="h-4 w-4 text-muted-foreground" />} 
-          value="140g" 
-          subtitle="of 160g"
-          progress={87}
-          color="bg-red-500"
-        />
-        <MetricCard 
-          title="Water" 
-          icon={<Droplets className="h-4 w-4 text-muted-foreground" />} 
-          value="2.5L" 
-          subtitle="of 3.5L"
-          progress={71}
-          color="bg-cyan-500"
-        />
-        <MetricCard 
-          title="Active Energy" 
-          icon={<Activity className="h-4 w-4 text-muted-foreground" />} 
-          value="650 kcal" 
-          subtitle="Goal: 500 kcal"
-          progress={100}
-          color="bg-green-500"
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="lg:col-span-4">
-          <HeatmapCalendar />
+      {/* Main Grid */}
+      <div className="grid lg:grid-cols-3 gap-6 w-full">
+        
+        {/* Left Column (Charts & Analytics) */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          <AnalyticsCharts sleepData={sleepData} workoutData={workoutData} />
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-gray-200">Today's Habits</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {todayHabits && todayHabits.length > 0 ? (
+                    todayHabits.map((habit: any) => (
+                      <HabitRow 
+                        key={habit.id} 
+                        id={habit.habitId} 
+                        name={habit.habitName} 
+                        completed={habit.completed} 
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-gray-800 rounded-lg">
+                      No habits tracked today yet.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <InsightsEngine sleepData={sleepData} workoutData={workoutData} />
+          </div>
         </div>
-        <div className="lg:col-span-3">
-          <DashboardCalendar />
+
+        {/* Right Column (Side Panels) */}
+        <div className="flex flex-col gap-6">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-gray-200">Next Workout</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-2">
+                <h3 className="text-xl font-bold text-neon-fuchsia">Pull Day</h3>
+                <p className="text-sm text-gray-400 mb-4">Hypertrophy Focus</p>
+                
+                <ul className="space-y-3 text-sm font-medium">
+                  <li className="flex justify-between border-b border-white/5 pb-2">
+                    <span className="text-gray-200">Deadlift</span> <span className="text-fuchsia-400">3 x 5-8</span>
+                  </li>
+                  <li className="flex justify-between border-b border-white/5 pb-2">
+                    <span className="text-gray-200">Lat Pulldown</span> <span className="text-fuchsia-400">3 x 10-12</span>
+                  </li>
+                  <li className="flex justify-between border-b border-white/5 pb-2">
+                    <span className="text-gray-200">Barbell Row</span> <span className="text-fuchsia-400">3 x 8-10</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span className="text-gray-200">Bicep Curls</span> <span className="text-fuchsia-400">4 x 12-15</span>
+                  </li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <WeightChart />
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle>Daily Habits</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {habits.map((habit: any) => (
-                <HabitRow 
-                  key={habit.id} 
-                  id={habit.id} 
-                  name={habit.habitType} 
-                  completed={habit.completed} 
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3 bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle>Next Workout</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2">
-              <h3 className="text-xl font-bold text-indigo-400">Pull Day (Hypertrophy)</h3>
-              <p className="text-sm text-gray-400 mb-4">Back, Biceps, and Rear Delts</p>
-              
-              <ul className="space-y-2 text-sm">
-                <li className="flex justify-between">
-                  <span>Deadlift</span> <span className="text-gray-400">3 x 5-8</span>
-                </li>
-                <li className="flex justify-between">
-                  <span>Lat Pulldown</span> <span className="text-gray-400">3 x 10-12</span>
-                </li>
-                <li className="flex justify-between">
-                  <span>Barbell Row</span> <span className="text-gray-400">3 x 8-10</span>
-                </li>
-                <li className="flex justify-between">
-                  <span>Bicep Curls</span> <span className="text-gray-400">4 x 12-15</span>
-                </li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <HabitGrid />
     </div>
-  );
-}
-
-function MetricCard({ title, icon, value, subtitle, progress, color }: any) {
-  return (
-    <Card className="bg-gray-900 border-gray-800">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">
-          {title}
-        </CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground mb-4">
-          {subtitle}
-        </p>
-        <Progress value={progress} className={`h-2 ${color}`} />
-      </CardContent>
-    </Card>
   );
 }

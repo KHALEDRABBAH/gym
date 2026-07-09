@@ -27,27 +27,37 @@ model User {
   workouts      WorkoutLog[]
   nutrition     NutritionLog[]
   habits        HabitLog[]
+  // Lifestyle & Productivity
+  dailyTasks    DailyTask[]
+  prayers       PrayerLog[]
+  reviews       ReviewLog[]
+  sleepLogs     SleepLog[]
 }
 
 model WorkoutLog {
   id          String    @id @default(uuid())
   userId      String
-  date        DateTime  @default(now())
+  date        String    // Format: YYYY-MM-DD for easy lookup
   workoutType String    // e.g., "Push", "Pull", "Legs"
   duration    Int?      // in minutes
   calories    Int?      
   
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   exercises   ExerciseSet[]
+
+  @@unique([userId, date])
 }
 
 model ExerciseSet {
   id           String     @id @default(uuid())
   workoutLogId String
+  exerciseId   String
   exerciseName String
   weight       Float
   reps         Int
+  setIndex     Int
   rpe          Int?       // Rate of Perceived Exertion
+  notes        String?
   
   workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
 }
@@ -55,7 +65,7 @@ model ExerciseSet {
 model NutritionLog {
   id          String   @id @default(uuid())
   userId      String
-  date        DateTime @default(now())
+  date        String
   calories    Int      @default(0)
   protein     Float    @default(0)
   carbs       Float    @default(0)
@@ -63,15 +73,69 @@ model NutritionLog {
   waterLiters Float    @default(0)
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
 }
 
 model HabitLog {
   id          String   @id @default(uuid())
   userId      String
-  date        DateTime @default(now())
-  habitType   String   // e.g., "Prayer", "Study", "Sleep"
+  date        String
+  habitId     String
+  habitName   String
   completed   Boolean  @default(false)
-  details     String?  // e.g., "Read 10 pages of Quran"
+  details     String?
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date, habitId])
+}
+
+model DailyTask {
+  id          String   @id @default(uuid())
+  userId      String
+  date        String
+  title       String
+  completed   Boolean  @default(false)
+  category    String   @default("General")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PrayerLog {
+  id          String   @id @default(uuid())
+  userId      String
+  date        String
+  fajr        Boolean  @default(false)
+  dhuhr       Boolean  @default(false)
+  asr         Boolean  @default(false)
+  maghrib     Boolean  @default(false)
+  isha        Boolean  @default(false)
+  taraweeh    Boolean  @default(false)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
+}
+
+model ReviewLog {
+  id           String   @id @default(uuid())
+  userId       String
+  date         String
+  type         String   // "DAILY" or "WEEKLY"
+  wins         String?
+  improvements String?
+  notes        String?
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date, type])
+}
+
+model SleepLog {
+  id          String   @id @default(uuid())
+  userId      String
+  date        String
+  hours       Float    @default(0)
+  quality     Int      @default(3) // 1-5 scale
+  notes       String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
 }

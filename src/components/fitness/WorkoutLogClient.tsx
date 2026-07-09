@@ -3,47 +3,75 @@
 import { Button } from "@/components/ui/button";
 import { Save, Trash2, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
-import { useState } from "react";
-import { useDate } from "@/lib/context/DateContext";
+import { useState, useTransition } from "react";
+import { saveWorkoutSet, clearWorkoutLog } from "@/app/actions";
+import type { WorkoutLog, ExerciseSet } from "@prisma/client";
 
-interface WorkoutLogProps {
+interface WorkoutLogClientProps {
   exercises: any[];
+  initialLog: (WorkoutLog & { exercises: ExerciseSet[] }) | null;
+  dateKey: string;
+  scheduleType: string;
 }
 
-export function WorkoutLog({ exercises }: WorkoutLogProps) {
-  const { dateKey } = useDate();
-  const [logData, setLogData] = useLocalStorage<Record<string, any>>(`fitness_hub_workout_log_${dateKey}`, {});
+export function WorkoutLogClient({ exercises, initialLog, dateKey, scheduleType }: WorkoutLogClientProps) {
+  const [isPending, startTransition] = useTransition();
   const [savedStatus, setSavedStatus] = useState(false);
+  
+  // Transform flat DB sets into a UI-friendly map: { [exerciseId]: { sets: [{kg, rep}] } }
+  const initialData: Record<string, any> = {};
+  if (initialLog && initialLog.exercises) {
+    initialLog.exercises.forEach((set: ExerciseSet) => {
+      if (!initialData[set.exerciseId]) {
+        initialData[set.exerciseId] = { sets: [] };
+      }
+      initialData[set.exerciseId].sets[set.setIndex] = { kg: set.weight.toString(), rep: set.reps.toString() };
+    });
+  }
+
+  const [logData, setLogData] = useState<Record<string, any>>(initialData);
 
   if (!exercises || exercises.length === 0) return null;
 
-  const handleUpdate = (exId: string, setIndex: number, field: 'kg' | 'rep', value: string) => {
+  const handleUpdate = (exId: string, exName: string, setIndex: number, field: 'kg' | 'rep', value: string) => {
+    // Update local state instantly
     setLogData(prev => {
       const exData = prev[exId] || { sets: [] };
       const sets = [...(exData.sets || [])];
       sets[setIndex] = { ...sets[setIndex], [field]: value };
       return { ...prev, [exId]: { ...exData, sets } };
     });
-  };
 
-  const handleNotes = (exId: string, notes: string) => {
-    setLogData(prev => ({ ...prev, [exId]: { ...(prev[exId] || {}), notes } }));
-  };
-
-  const clearLog = () => {
-    if (confirm("Are you sure you want to clear these logs?")) {
-      setLogData(prev => {
-        const next = { ...prev };
-        exercises.forEach(ex => delete next[ex.id]);
-        return next;
-      });
-    }
+    // We don't save immediately on every keystroke to avoid spamming the DB,
+    // we'll rely on the "Save Log" button, OR we can debounce.
+    // For now, let's keep the manual "Save" button pattern since the user likes it.
   };
 
   const handleSave = () => {
     setSavedStatus(true);
     setTimeout(() => setSavedStatus(false), 2000);
+    
+    startTransition(async () => {
+      for (const exId of Object.keys(logData)) {
+        const exName = exercises.find(e => e.id === exId)?.name || exId;
+        const sets = logData[exId].sets;
+        for (let i = 0; i < sets.length; i++) {
+          const s = sets[i];
+          if (s && s.kg && s.rep) {
+            await saveWorkoutSet(dateKey, scheduleType, exId, exName, i, parseFloat(s.kg), parseInt(s.rep));
+          }
+        }
+      }
+    });
+  };
+
+  const handleClear = () => {
+    if (confirm("Are you sure you want to clear these logs?")) {
+      setLogData({});
+      startTransition(() => {
+        clearWorkoutLog(dateKey);
+      });
+    }
   };
 
   return (
@@ -53,11 +81,11 @@ export function WorkoutLog({ exercises }: WorkoutLogProps) {
           <span>📊</span> Workout Log — Track Your Weights
         </h3>
         <div className="flex items-center gap-2 mt-4 md:mt-0">
-          <Button onClick={handleSave} size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-8 transition-colors">
-            {savedStatus ? <CheckCircle className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />} 
-            {savedStatus ? "Saved!" : "Save Log"}
+          <Button onClick={handleSave} disabled={isPending} size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-8 transition-colors">
+            {savedStatus || isPending ? <CheckCircle className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />} 
+            {isPending ? "Saving..." : savedStatus ? "Saved!" : "Save Log"}
           </Button>
-          <Button onClick={clearLog} size="sm" variant="destructive" className="bg-red-500 hover:bg-red-600 font-bold h-8">
+          <Button onClick={handleClear} disabled={isPending} size="sm" variant="destructive" className="bg-red-500 hover:bg-red-600 font-bold h-8">
             <Trash2 className="w-4 h-4 mr-2" /> Delete
           </Button>
         </div>
@@ -72,7 +100,6 @@ export function WorkoutLog({ exercises }: WorkoutLogProps) {
               <th className="px-4 py-3 font-bold tracking-wider text-xs text-center">SET 2</th>
               <th className="px-4 py-3 font-bold tracking-wider text-xs text-center">SET 3</th>
               <th className="px-4 py-3 font-bold tracking-wider text-xs text-center">SET 4</th>
-              <th className="px-4 py-3 font-bold tracking-wider text-xs text-center">NOTES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/50">
@@ -97,8 +124,8 @@ export function WorkoutLog({ exercises }: WorkoutLogProps) {
                           <Input 
                             type="number" 
                             placeholder="kg" 
-                            value={setData.kg}
-                            onChange={(e) => handleUpdate(ex.id, s, 'kg', e.target.value)}
+                            value={setData.kg || ""}
+                            onChange={(e) => handleUpdate(ex.id, ex.name, s, 'kg', e.target.value)}
                             className="w-16 h-8 bg-[#1f2537] border-gray-700 text-center text-gray-200 rounded-md focus:border-indigo-500 px-1 placeholder:text-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             disabled={isDisabled}
                           />
@@ -106,8 +133,8 @@ export function WorkoutLog({ exercises }: WorkoutLogProps) {
                           <Input 
                             type="number" 
                             placeholder="rep" 
-                            value={setData.rep}
-                            onChange={(e) => handleUpdate(ex.id, s, 'rep', e.target.value)}
+                            value={setData.rep || ""}
+                            onChange={(e) => handleUpdate(ex.id, ex.name, s, 'rep', e.target.value)}
                             className="w-16 h-8 bg-[#1f2537] border-gray-700 text-center text-gray-200 rounded-md focus:border-indigo-500 px-1 placeholder:text-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             disabled={isDisabled}
                           />
@@ -115,16 +142,6 @@ export function WorkoutLog({ exercises }: WorkoutLogProps) {
                       </td>
                     );
                   })}
-                  
-                  <td className="px-4 py-4 text-center">
-                    <Input 
-                      type="text" 
-                      placeholder="..." 
-                      value={exLog.notes || ""}
-                      onChange={(e) => handleNotes(ex.id, e.target.value)}
-                      className="w-24 h-8 bg-[#1f2537] border-gray-700 text-center text-gray-200 mx-auto rounded-md focus:border-indigo-500 placeholder:text-gray-600"
-                    />
-                  </td>
                 </tr>
               );
             })}

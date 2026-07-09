@@ -13,7 +13,8 @@ export function WaterLogger({ currentWater }: { currentWater: number }) {
 
   const addWater = (liters: number) => {
     startTransition(() => {
-      logWater(liters);
+      const dateKey = new Date().toISOString().split("T")[0];
+      logWater(dateKey, liters);
     });
   };
 
